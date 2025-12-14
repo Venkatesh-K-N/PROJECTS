@@ -120,5 +120,4 @@ GAME FEATURES:
 
 
 
-javac -d bin src/main/java/chess/*.java src/main/java/chess/gui/*.java
-java -cp bin chess.gui.ChessGUI
+
