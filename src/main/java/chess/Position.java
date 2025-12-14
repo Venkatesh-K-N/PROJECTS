@@ -16,10 +16,16 @@ public class Position {
     public int getCol() {
         return col;
     }
+    public String toChessNotation() {
+    char file = (char)('a' + col);
+    int rank = 8 - row;
+    return "" + file + rank;
+    }
 
     public boolean isValid() {
         return row >= 0 && row < 8 && col >= 0 && col < 8;
     }
+
 
     @Override
     public boolean equals(Object obj) {

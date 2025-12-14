@@ -1,18 +1,6 @@
 package chess.gui;
 
-import chess.Game;
-import chess.Position;
-import chess.Piece;
-import chess.PieceType;
-import chess.Color;
-import chess.GameStatus;
-import chess.Queen;
-import chess.Rook;
-import chess.Bishop;
-import chess.Knight;
-
-import javax.imageio.ImageIO;
-import javax.swing.*;
+import chess.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -20,8 +8,8 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.net.URL;
 import java.util.*;
-
-
+import javax.imageio.ImageIO;
+import javax.swing.*;
 
 public class BoardPanel extends JPanel {
     public static final int TILE_SIZE = 120;
@@ -32,6 +20,7 @@ public class BoardPanel extends JPanel {
 
     private Position selected = null;
     private final Set<Position> highlighted = new HashSet<>();
+    private chess.Move hintMove = null;
 
     private final Map<String, BufferedImage> imageCache = new HashMap<>();
 
@@ -43,6 +32,7 @@ public class BoardPanel extends JPanel {
     private final java.awt.Color SELECTION_COLOR = new java.awt.Color(255, 255, 0, 120);
     private final java.awt.Color MOVE_HIGHLIGHT = new java.awt.Color(0, 150, 0, 150);
     private final java.awt.Color TURN_INDICATOR_BG = new java.awt.Color(0, 0, 0, 120);
+    private static final java.awt.Color HINT_COLOR = new java.awt.Color(255, 255, 0, 180);
 
     public BoardPanel(Game game, GameInfoPanel infoPanel) {
         this.game = game;
@@ -66,6 +56,7 @@ public class BoardPanel extends JPanel {
         this.game = game;
         this.selected = null;
         this.highlighted.clear();
+        this.hintMove = null;
         this.gameOver = false;
         repaint();
     }
@@ -77,8 +68,63 @@ public class BoardPanel extends JPanel {
     public void resetBoard() {
         selected = null;
         highlighted.clear();
+        hintMove = null;
         gameOver = false;
         repaint();
+    }
+
+    public void highlightHint(chess.Move hint) {
+        this.hintMove = hint;
+        
+        if (hint != null) {
+            selected = null;
+            highlighted.clear();
+            repaint();
+        }
+        
+        // Clear hint after 3 seconds
+        javax.swing.Timer timer = new javax.swing.Timer(3000, e -> {
+            hintMove = null;
+            repaint();
+        });
+        timer.setRepeats(false);
+        timer.start();
+    }
+
+    public void executeAIMove(chess.Move move) {
+        if (move == null) return;
+        
+        Position from = move.getFrom();
+        Position to = move.getTo();
+        
+        Piece piece = game.getBoard().getPiece(from);
+        Piece captured = game.getBoard().getPiece(to);
+        
+        boolean isCapture = captured != null;
+        boolean moveSuccess = game.makeMove(from, to);
+        
+        if (moveSuccess) {
+            // Play sound
+            if (isCapture) {
+                SoundPlayer.playSound("capture.wav");
+            } else {
+                SoundPlayer.playSound("move.wav");
+            }
+            
+            handlePawnPromotion(to, piece);
+            
+            if (infoPanel != null) {
+                infoPanel.updateAll();
+            }
+            
+            // Check sound
+            if (game.isInCheck(game.getCurrentPlayer())) {
+                SoundPlayer.playSound("check.wav");
+            }
+            
+            checkForGameOver();
+            repaint();
+        }
     }
 
     private void loadAllPieceImages() {
@@ -124,7 +170,7 @@ public class BoardPanel extends JPanel {
     }
 
     private boolean isPieceWhite(Piece piece) {
-        return piece != null && piece.getColor() == Color.WHITE;
+        return piece != null && piece.getColor() == chess.Color.WHITE;
     }
 
     @Override
@@ -173,7 +219,7 @@ public class BoardPanel extends JPanel {
                         TILE_SIZE, TILE_SIZE);
 
                 if (!gameOver) {
-                    Color currentPlayer = game.getCurrentPlayer();
+                    chess.Color currentPlayer = game.getCurrentPlayer();
                     boolean inCheck = game.isInCheck(currentPlayer);
 
                     Position kingPos = game.getBoard().findKing(currentPlayer);
@@ -212,6 +258,17 @@ public class BoardPanel extends JPanel {
                     }
                 }
 
+                // Draw hint highlight
+                if (hintMove != null && 
+                    (pos.equals(hintMove.getFrom()) || pos.equals(hintMove.getTo()))) {
+                    g.setColor(HINT_COLOR);
+                    g.setStroke(new BasicStroke(4));
+                    g.drawRect(COORDINATE_MARGIN + col * TILE_SIZE + 3,
+                            COORDINATE_MARGIN + row * TILE_SIZE + 3,
+                            TILE_SIZE - 6, TILE_SIZE - 6);
+                    g.setStroke(new BasicStroke(1));
+                }
+
                 Piece piece = game.getBoard().getPiece(pos);
                 if (piece != null) {
                     String imageName = getPieceImageName(piece);
@@ -242,7 +299,7 @@ public class BoardPanel extends JPanel {
         g.setColor(TURN_INDICATOR_BG);
         g.fillRect(boxX, boxY, 140, 30);
 
-        boolean whiteTurn = game.getCurrentPlayer() == Color.WHITE;
+        boolean whiteTurn = game.getCurrentPlayer() == chess.Color.WHITE;
         g.setColor(whiteTurn ? java.awt.Color.WHITE : java.awt.Color.BLACK);
         g.fillRect(boxX + 5, boxY + 5, 20, 20);
 
@@ -263,6 +320,9 @@ public class BoardPanel extends JPanel {
 
         Position clicked = new Position(row, col);
         Piece clickedPiece = game.getBoard().getPiece(clicked);
+
+        // Clear hint when player clicks
+        hintMove = null;
 
         // ===========================
         // 1. SELECT PIECE
@@ -340,6 +400,11 @@ public class BoardPanel extends JPanel {
             }
 
             checkForGameOver();
+            
+            // Trigger AI move if needed
+            if (infoPanel != null) {
+                infoPanel.triggerAIMove();
+            }
         }
 
         repaint();
@@ -347,7 +412,7 @@ public class BoardPanel extends JPanel {
 
     private void handlePawnPromotion(Position pos, Piece movedPiece) {
         if (movedPiece.getType() == PieceType.PAWN) {
-            int promotionRow = (movedPiece.getColor() == Color.WHITE) ? 0 : 7;
+            int promotionRow = (movedPiece.getColor() == chess.Color.WHITE) ? 0 : 7;
 
             if (pos.getRow() == promotionRow) {
 
@@ -376,7 +441,7 @@ public class BoardPanel extends JPanel {
     private void promotePawn(Position pos, PieceType newType) {
         Piece pawn = game.getBoard().getPiece(pos);
         if (pawn != null && pawn.getType() == PieceType.PAWN) {
-            Color color = pawn.getColor();
+            chess.Color color = pawn.getColor();
             Piece newPiece;
 
             switch (newType) {

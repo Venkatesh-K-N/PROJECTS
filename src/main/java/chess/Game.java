@@ -1,9 +1,9 @@
 package chess;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.HashSet;
 
 public class Game {
     private final Board board;
@@ -29,6 +29,15 @@ public class Game {
     public GameStatus getStatus() {
         return status;
     }
+    
+    /**
+     * Checks if the game has concluded (Checkmate or Stalemate).
+     * This method is useful for the GUI to know when to stop interaction.
+     * @return true if the game is over, false otherwise.
+     */
+    public boolean isGameOver() {
+        return status != GameStatus.IN_PROGRESS;
+    }
 
     public boolean makeMove(Position from, Position to) {
         Piece piece = board.getPiece(from);
@@ -51,8 +60,14 @@ public class Game {
         }
 
         Piece capturedPiece = board.getPiece(to);
+        
+        // Temporarily store the piece being moved before it's moved on the board copy/reference
+        Piece movingPiece = piece; 
+        
         board.movePiece(from, to);
-        moveHistory.add(new Move(from, to, capturedPiece));
+        
+        // CRITICAL CHANGE: Using the updated Move constructor (from, to, piece, capturedPiece)
+        moveHistory.add(new Move(from, to, movingPiece, capturedPiece));
 
         // Check for pawn promotion
         if (piece.getType() == PieceType.PAWN && (to.getRow() == 0 || to.getRow() == 7)) {
@@ -114,7 +129,8 @@ public class Game {
                 Position pos = new Position(row, col);
                 Piece piece = checkBoard.getPiece(pos);
                 if (piece != null && piece.getColor() == attackingColor) {
-                    List<Position> moves = piece.getPossibleMoves(pos, checkBoard);
+                    // Assuming piece.getPossibleMoves includes attacks and captures
+                    List<Position> moves = piece.getPossibleMoves(pos, checkBoard); 
                     if (moves.contains(position)) {
                         return true;
                     }
@@ -162,12 +178,14 @@ public class Game {
 
     // NEW: Helper method to create pieces
     private Piece createPiece(PieceType type, Color color) {
+        // NOTE: This assumes constructors for Queen, Rook, Bishop, Knight are accessible
         switch (type) {
             case QUEEN: return new Queen(color);
             case ROOK: return new Rook(color);
             case BISHOP: return new Bishop(color);
             case KNIGHT: return new Knight(color);
-            default: return new Queen(color); // fallback
+            // Defaulting to Queen for any unsupported type in promotion context
+            default: return new Queen(color); 
         }
     }
 

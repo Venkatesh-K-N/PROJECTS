@@ -171,4 +171,28 @@ public class Board {
         }
         return pieces;
     }
+    
+    // Add after existing methods
+    /**
+     * Retrieves the piece at the given row and column indices.
+     * @param row The row index (0-7).
+     * @param col The column index (0-7).
+     * @return The Piece object, or null if the position is invalid or empty.
+     */
+    public Piece getPieceAt(int row, int col) {
+        if (row >= 0 && row < 8 && col >= 0 && col < 8) {
+            return board[row][col];
+        }
+        return null;
+    }
+
+    /**
+     * Checks if the given row and column indices are within the board bounds.
+     * @param row The row index (0-7).
+     * @param col The column index (0-7).
+     * @return true if the position is valid, false otherwise.
+     */
+    public boolean isValidPosition(int row, int col) {
+        return row >= 0 && row < 8 && col >= 0 && col < 8;
+    }
 }
