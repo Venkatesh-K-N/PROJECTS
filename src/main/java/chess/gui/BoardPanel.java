@@ -1,6 +1,8 @@
 package chess.gui;
 
 import chess.*;
+import javax.imageio.ImageIO;
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -8,8 +10,6 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.net.URL;
 import java.util.*;
-import javax.imageio.ImageIO;
-import javax.swing.*;
 
 public class BoardPanel extends JPanel {
     public static final int TILE_SIZE = 120;
@@ -17,6 +17,7 @@ public class BoardPanel extends JPanel {
 
     private Game game;
     private GameInfoPanel infoPanel;
+    private chess.gui.ChessGUI chessGUI;
 
     private Position selected = null;
     private final Set<Position> highlighted = new HashSet<>();
@@ -63,6 +64,10 @@ public class BoardPanel extends JPanel {
 
     public void setInfoPanel(GameInfoPanel infoPanel) {
         this.infoPanel = infoPanel;
+    }
+    
+    public void setChessGUI(chess.gui.ChessGUI gui) {
+        this.chessGUI = gui;
     }
 
     public void resetBoard() {
@@ -115,6 +120,11 @@ public class BoardPanel extends JPanel {
             
             if (infoPanel != null) {
                 infoPanel.updateAll();
+            }
+            
+            // Update history on left panel
+            if (chessGUI != null) {
+                chessGUI.updateHistory();
             }
             
             // Check sound
@@ -393,6 +403,9 @@ public class BoardPanel extends JPanel {
             highlighted.clear();
 
             if (infoPanel != null) infoPanel.updateAll();
+            
+            // Update history on left panel
+            if (chessGUI != null) chessGUI.updateHistory();
 
             // CHECK SOUND
             if (game.isInCheck(game.getCurrentPlayer())) {

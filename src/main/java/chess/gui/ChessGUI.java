@@ -62,6 +62,9 @@ public class ChessGUI extends JFrame {
 
         getContentPane().add(scrollPane, BorderLayout.CENTER);
 
+        // Pass reference to ChessGUI to BoardPanel
+        boardPanel.setChessGUI(this);
+        
         // Restart callback
         infoPanel.setRestartCallback(() -> {
             Game newGame = new Game();
